@@ -37,6 +37,7 @@ $html = '<table border=1 id="table_detail" align=center cellpadding=10>
     <th>Phone</th>
     <th></th>
     <th></th>
+    <th>Family Id</th>
     <th>Name</th>
     <th>Role</th>
     <th>Address</th>
@@ -76,15 +77,7 @@ for ($row = 2; $row <= $highestRow; $row++) {
 
     if (isset($member)) {
 
-        // dd($member);
-        $family_members = OrgMembers::where('organization_family_id', $member->organization_family_id)->orderBy('role', 'asc')->get();
-        // dd($family_members);
-
-        $i = 0;
-        foreach ($family_members as $fmember) {
-            $i++;
-            if ($fmember->role == 1) {
-                $html .= '<tr class="parent">
+        $html .= '<tr class="parent">
                     <td>' . $parent_name . '</td>
                     <td>Parent</td>
                     <td>' . $address . '</td>
@@ -92,29 +85,59 @@ for ($row = 2; $row <= $highestRow; $row++) {
                     <td>' . $phone . '</td>
                     <td></td>
                     <td></td>
-                    <td>'.$member->organization_family_id.'</td>
-                    <td>' . $fmember->first_name . ' ' . $fmember->last_name . '</td>
+                    <td>' . $member->organization_family_id . '</td>
+                    <td>' . $member->first_name . ' ' . $member->last_name . '</td>
                     <td>Parent</td>
                     <td>' . $address . '</td>
-                    <td>' . $fmember->email . '</td>
-                    <td>' . $fmember->phone_number . '</td>
+                    <td>' . $member->email . '</td>
+                    <td>' . $member->phone_number . '</td>
                 </tr>';
-            } else {
 
-                if ($i == 1) {
-                    $student_name = $student_1_name;
-                    $student_grade = $student_1_grade;
-                } elseif ($i == 2) {
-                    $student_name = $student_2_name;
-                    $student_grade = $student_2_grade;
-                } elseif ($i == 3) {
-                    $student_name = $student_3_name;
-                    $student_grade = $student_3_grade;
+        // dd($member);
+        $family_members = OrgMembers::where('organization_family_id', $member->organization_family_id)->where('role', 2)->orderBy('role', 'asc')->get();
+        // dd($family_members);
+
+        $data = [1, 2, 3]; // Example data array
+        $i = 0;
+        foreach ($data as $item) {
+            $i++;
+
+            if ($i == 1) {
+                $student_name = $student_1_name;
+                $student_grade = $student_1_grade;
+
+                $fmemberName = $family_members[0]->first_name . ' ' . $family_members[0]->last_name;
+                $fmemberGrade = $family_members[0]->grade->name;
+            } elseif ($i == 2) {
+                $student_name = $student_2_name;
+                $student_grade = $student_2_grade;
+
+                if (isset($family_members[1])) {
+                    $fmemberName = $family_members[1]->first_name . ' ' . $family_members[1]->last_name;
+                    $fmemberGrade = $family_members[1]->grade->name;
                 } else {
-                    $student_name = 'Name more than 3';
-                    $student_grade = 'Grade more than 3';
+                    $fmemberName = '';
+                    $fmemberGrade = '';
                 }
-                $html .= '<tr class="child">
+            } elseif ($i == 3) {
+                $student_name = $student_3_name;
+                $student_grade = $student_3_grade;
+
+                if (isset($family_members[2])) {
+                    $fmemberName = $family_members[2]->first_name . ' ' . $family_members[2]->last_name;
+                    $fmemberGrade = $family_members[2]->grade->name;
+                } else {
+                    $fmemberName = '';
+                    $fmemberGrade = '';
+                }
+            } else {
+                $student_name = 'Name more than 3';
+                $student_grade = 'Grade more than 3';
+
+                $fmemberName = '';
+                $fmemberGrade = '';
+            }
+            $html .= '<tr class="child">
                     <td>' . $student_name . '</td>
                     <td>Child</td>
                     <td>' . $address . '</td>
@@ -122,13 +145,12 @@ for ($row = 2; $row <= $highestRow; $row++) {
                     <td></td>
                     <td></td>
                     <td></td>
-                    <td>' . $fmember->first_name . ' ' . $fmember->last_name . '</td>
+                    <td>' . $fmemberName . '</td>
                     <td>Child</td>
                     <td>' . $address . '</td>
-                    <td>' . $fmember->organization_grade_id . '</td>
+                    <td>' . $fmemberGrade . '</td>
                     <td></td>
                 </tr>';
-            }
         }
     } else {
         $html .= '<tr class="parent">
