@@ -18,9 +18,11 @@ class OrgMembers extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
+        'organization_family_id',
+        'first_name',
+        'last_name',
+        'role',
+        'organization_grade_id',
     ];
 
     /**

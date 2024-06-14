@@ -33,17 +33,9 @@ class OrgFamilies extends Model
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    public function address()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->hasOne(Addresses::class, 'id', 'address_id');
     }
 
     protected $table = 'organization_families';
