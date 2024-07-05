@@ -107,12 +107,14 @@ class MergingData extends Controller
     public function getNewData()
     {
         $filePath = public_path() . '/school-data.csv';
+        // $filePath = public_path() . '/assumptionacademy.csv';
 
         $spreadsheet = IOFactory::load($filePath);
         $worksheet = $spreadsheet->getActiveSheet();
 
         // Get the highest row number and column letter
         $highestRow = $worksheet->getHighestRow();
+        // dd($highestRow);
         $highestColumn = $worksheet->getHighestColumn();
 
         // write new sheet
@@ -217,7 +219,7 @@ class MergingData extends Controller
 
     public function updateData()
     {
-        $filePath = public_path() . '/school-data.csv';
+        $filePath = public_path() . '/assumptionacademy.csv';
 
         $spreadsheet = IOFactory::load($filePath);
         $worksheet = $spreadsheet->getActiveSheet();
