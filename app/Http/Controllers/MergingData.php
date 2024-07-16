@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\OrgFamilies;
+use App\Models\OrgGrades;
 use App\Models\OrgMembers;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -219,7 +220,7 @@ class MergingData extends Controller
 
     public function updateData()
     {
-        $filePath = public_path() . '/assumptionacademy.csv';
+        $filePath = public_path() . '/school-data.csv';
 
         $spreadsheet = IOFactory::load($filePath);
         $worksheet = $spreadsheet->getActiveSheet();
@@ -227,6 +228,7 @@ class MergingData extends Controller
         // Get the highest row number and column letter
         $highestRow = $worksheet->getHighestRow();
         $highestColumn = $worksheet->getHighestColumn();
+        // dd($highestRow);
 
         if(isset($_GET['from'])) {
             $from = $_GET['from'];
@@ -260,11 +262,13 @@ class MergingData extends Controller
             $email = $worksheet->getCell('R' . $row)->getValue();
             $phone = $worksheet->getCell('S' . $row)->getValue();
 
-            $member = OrgMembers::where('email', $email)->first();
+            $member = OrgMembers::where('email', $email)->where('created_at', '<', '2024-07-01')->first();
             if (isset($member)) {
 
                 // 1st kid
                 if ($student_1_fname != null) {
+                    // dd($member);
+                    // dd($this->getGrade($student_1_grade));
                     $kid1 = OrgMembers::where('organization_family_id', $member->organization_family_id)
                         ->where('role', 2)
                         ->where('first_name', $student_1_fname)
@@ -332,41 +336,7 @@ class MergingData extends Controller
 
     public function getGrade($grade)
     {
-        if ($grade == 1) {
-            return 76;
-        } elseif ($grade == 2) {
-            return 77;
-        } elseif ($grade == 3) {
-            return 78;
-            // return 1185;
-        } elseif ($grade == 4) {
-            return 79;
-            // return 1186;
-        } elseif ($grade == 5) {
-            return 80;
-            // return 1187;
-        } elseif ($grade == 6) {
-            return 81;
-            // return 1188;
-        } elseif ($grade == 7) {
-            return 82;
-            // return 1189;
-        } elseif ($grade == 8) {
-            return 83;
-            // return 1190;
-        } elseif ($grade == 9) {
-            return 84;
-            // return 1191;
-        } elseif ($grade == 10) {
-            return 85;
-            // return 1192;
-        } elseif ($grade == 11) {
-            return 86;
-            // return 1193;
-        } elseif ($grade == 12) {
-            return 87;
-            // return 1194;
-        }
+        return OrgGrades::where('organization_id', 33)->where('name', $grade)->value('id');
     }
 
     public function deleteGraduatedKids()
