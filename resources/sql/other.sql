@@ -45,3 +45,5 @@ JOIN (
     )
     LIMIT 20
 ) AS to_delete ON om.id = to_delete.id;
+
+-- get families with no student

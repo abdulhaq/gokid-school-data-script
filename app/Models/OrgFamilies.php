@@ -38,6 +38,11 @@ class OrgFamilies extends Model
         return $this->hasOne(Addresses::class, 'id', 'address_id');
     }
 
+    public function members()
+    {
+        return $this->hasMany(OrgMembers::class, 'organization_family_id', 'id');
+    }
+
     protected $table = 'organization_families';
 
 }

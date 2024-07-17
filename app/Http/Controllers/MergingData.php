@@ -105,9 +105,12 @@ class MergingData extends Controller
         echo "CSV file written to {$filename}";
     }
 
+    /**
+     * This downloads a sheet with all students that are in excel but not in Database
+     */
     public function getNewData()
     {
-        $filePath = public_path() . '/school-data.csv';
+        $filePath = public_path() . '/Foresthill_school.csv';
         // $filePath = public_path() . '/assumptionacademy.csv';
 
         $spreadsheet = IOFactory::load($filePath);
@@ -212,15 +215,81 @@ class MergingData extends Controller
         $writer->setDelimiter(',');
 
         // Save the file to the specified path
-        $filename = 'new_data.csv';
-        $writer->save($filename);
+        // Create a temporary file to save the CSV
+        $temp_file = tempnam(sys_get_temp_dir(), 'csv');
+        $writer->save($temp_file);
+
+        // Set the headers to force a download
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="new_data_gus.csv"');
+        header('Content-Length: ' . filesize($temp_file));
+
+        // Output the file content
+        readfile($temp_file);
+
+        // Delete the temporary file
+        unlink($temp_file);
+
+        exit;
 
         echo "CSV file written to {$filename}";
     }
 
+    /**
+     * This will return list of students/families that are in the system but not in excel
+     */
+    public function inDbNotInExcel()
+    {
+        // if (strcasecmp('livelenslisa@gmail.com' , 'Livelenslisa@gmail.com') == 0) {
+        //     // Return the row number if a match is found
+        //     echo 'same';
+        // } else { dd('no');}
+        $members = OrgFamilies::where('organization_id', 14)->with('members')->get();
+
+        $column = 'R';
+        // Load the Excel file
+        $filePath = public_path() . '/Foresthill_school.csv';
+        $spreadsheet = IOFactory::load($filePath);
+
+        // Get the first sheet
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Get the highest row number in the specified column
+        $highestRow = $sheet->getHighestRow();
+
+        $emails = '';
+        foreach ($members as $member) {
+            $found = false;
+            foreach ($member->members as $memb) {
+                // dd($memb->email);
+
+                if (isset($memb->email)) {
+                    for ($row = 0; $row <= $highestRow; $row++) {
+                        $cellValue = $sheet->getCell($column . $row)->getValue();
+                        if (trim($cellValue) == trim($memb->email)) {
+                            // Return the row number if a match is found
+                            //$found = true;
+                        }
+                        if (strcasecmp(trim($cellValue), trim($memb->email)) == 0) {
+                            $found = true;
+                        }
+                    }
+                    if (!$found) {
+                        $emails .= $memb->email . ' &&</br>';
+                    }
+                }
+            }
+        }
+
+        echo $emails; // Return null if no match is found
+    }
+
+    /**
+     * This will update student grades
+     */
     public function updateData()
     {
-        $filePath = public_path() . '/school-data.csv';
+        $filePath = public_path() . '/Foresthill_school.csv';
 
         $spreadsheet = IOFactory::load($filePath);
         $worksheet = $spreadsheet->getActiveSheet();
@@ -230,12 +299,12 @@ class MergingData extends Controller
         $highestColumn = $worksheet->getHighestColumn();
         // dd($highestRow);
 
-        if(isset($_GET['from'])) {
+        if (isset($_GET['from'])) {
             $from = $_GET['from'];
         } else {
             $from = 2;
         }
-        if(isset($_GET['till'])) {
+        if (isset($_GET['till'])) {
             $till = $_GET['till'];
         } else {
             $till = 100;
@@ -328,7 +397,7 @@ class MergingData extends Controller
                 }
             }
             // dd($kid2);
-            if($row == $till) {
+            if ($row == $till) {
                 dd('50 done');
             }
         }
@@ -342,6 +411,12 @@ class MergingData extends Controller
     public function deleteGraduatedKids()
     {
         // find all kids with grade 12 and delete them. Make sure you do this before adding new data and updating old data.
+
+        /**
+         * To delete kids, find the last grade of school and search all kids with that grade (this should be done before adding new kids).
+         * And match the kids with excel file. If kid is not found in excel, then delete them.
+         */
+
         /**
          * Steps:
          * 1. Delete all kids in 12th grade as they graduated

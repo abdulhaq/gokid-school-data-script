@@ -7,9 +7,9 @@ WHERE m.user_id IS NULL
 -- Following query gets same but for specific school. In this case school with ID 8
 SELECT m.*
 FROM organization_members m
-JOIN organization_families of ON m.organization_family_id = of.organization_family_id
+JOIN organization_families of ON m.organization_family_id = of.id
 WHERE m.user_id IS NULL
-  AND of.org_id = 8
+  AND of.organization_id = 8
   AND EXISTS (SELECT 1 FROM users u WHERE u.email = m.email);
 
   -- Update all memeber with no id to correct id if user exist matching email
