@@ -52,6 +52,11 @@ class OrgMembers extends Model
         ];
     }
 
+    public function family()
+    {
+        return $this->hasMany(OrgFamilies::class, 'id', 'organization_family_id');
+    }
+
     protected $table = 'organization_members';
 
 }

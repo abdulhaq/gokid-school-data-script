@@ -108,10 +108,10 @@ class MergingData extends Controller
     /**
      * This downloads a sheet with all students that are in excel but not in Database
      */
-    public function getNewData()
+    public function getNewData($school_id)
     {
-        $filePath = public_path() . '/Foresthill_school.csv';
-        // $filePath = public_path() . '/assumptionacademy.csv';
+        // $filePath = public_path() . '/Del_Oro_school.csv';
+        $filePath = public_path() . '/' . $school_id . '.csv';
 
         $spreadsheet = IOFactory::load($filePath);
         $worksheet = $spreadsheet->getActiveSheet();
@@ -171,7 +171,8 @@ class MergingData extends Controller
             $email = $worksheet->getCell('R' . $row)->getValue();
             $phone = $worksheet->getCell('S' . $row)->getValue();
 
-            $member = OrgMembers::where('email', $email)->first();
+            $member = OrgMembers::where('email', $email)->with('family')->first();
+            // dd($member->family[0]->organization_id);
 
             if (!isset($member)) {
 
@@ -204,7 +205,40 @@ class MergingData extends Controller
                 $sheet->setCellValue("S{$row2}", $phone);
                 $row2++;
             } else {
-                continue;
+                if ($member->family[0]->organization_id != $school_id) {
+                    $sheet->setCellValue("A{$row2}", $parent_first_name);
+                    $sheet->setCellValue("B{$row2}", $parent_last_name);
+
+                    $sheet->setCellValue("C{$row2}", $student_1_fname);
+                    $sheet->setCellValue("D{$row2}", $student_1_lname);
+                    $sheet->setCellValue("E{$row2}", $student_1_grade);
+
+
+                    $sheet->setCellValue("F{$row2}", $student_2_fname);
+                    $sheet->setCellValue("G{$row2}", $student_2_lname);
+                    $sheet->setCellValue("H{$row2}", $student_2_grade);
+
+
+                    $sheet->setCellValue("I{$row2}", $student_3_fname);
+                    $sheet->setCellValue("J{$row2}", $student_3_lname);
+                    $sheet->setCellValue("K{$row2}", $student_3_grade);
+
+                    $sheet->setCellValue("L{$row2}", $address_1);
+
+                    $sheet->setCellValue("M{$row2}", $address_2);
+                    $sheet->setCellValue("N{$row2}", $city);
+                    $sheet->setCellValue("O{$row2}", $state);
+                    $sheet->setCellValue("P{$row2}", $zip);
+                    $sheet->setCellValue("Q{$row2}", $country);
+
+                    $sheet->setCellValue("R{$row2}", $email);
+                    $sheet->setCellValue("S{$row2}", $phone);
+
+                    $sheet->setCellValue("U{$row2}", 'Exist in another school: '.$member->family[0]->organization_id);
+                    $row2++;
+                } else {
+                    continue;
+                }
             }
         }
 
@@ -231,24 +265,18 @@ class MergingData extends Controller
         unlink($temp_file);
 
         exit;
-
-        echo "CSV file written to {$filename}";
     }
 
     /**
      * This will return list of students/families that are in the system but not in excel
      */
-    public function inDbNotInExcel()
+    public function inDbNotInExcel($school_id)
     {
-        // if (strcasecmp('livelenslisa@gmail.com' , 'Livelenslisa@gmail.com') == 0) {
-        //     // Return the row number if a match is found
-        //     echo 'same';
-        // } else { dd('no');}
-        $members = OrgFamilies::where('organization_id', 14)->with('members')->get();
+        $members = OrgFamilies::where('organization_id', $school_id)->with('members')->get();
 
         $column = 'R';
         // Load the Excel file
-        $filePath = public_path() . '/Foresthill_school.csv';
+        $filePath = public_path() . '/' . $school_id . '.csv';
         $spreadsheet = IOFactory::load($filePath);
 
         // Get the first sheet
@@ -258,6 +286,7 @@ class MergingData extends Controller
         $highestRow = $sheet->getHighestRow();
 
         $emails = '';
+        $count = 0;
         foreach ($members as $member) {
             $found = false;
             foreach ($member->members as $memb) {
@@ -266,30 +295,32 @@ class MergingData extends Controller
                 if (isset($memb->email)) {
                     for ($row = 0; $row <= $highestRow; $row++) {
                         $cellValue = $sheet->getCell($column . $row)->getValue();
-                        if (trim($cellValue) == trim($memb->email)) {
-                            // Return the row number if a match is found
-                            //$found = true;
-                        }
                         if (strcasecmp(trim($cellValue), trim($memb->email)) == 0) {
                             $found = true;
                         }
                     }
                     if (!$found) {
-                        $emails .= $memb->email . ' &&</br>';
+                        // $this->deleteFamilyByEmail($memb->email);
+                        // dd('deleted: '. $memb->email);
+                        $count++;
+                        $emails .= $memb->email . '</br>';
+                        if ($count == 20) {
+                            // dd('deleted :' . $emails);
+                        }
                     }
                 }
             }
         }
 
-        echo $emails; // Return null if no match is found
+        echo $count . '</br>' . $emails; // Return null if no match is found
     }
 
     /**
      * This will update student grades
      */
-    public function updateData()
+    public function updateData($school_id)
     {
-        $filePath = public_path() . '/Foresthill_school.csv';
+        $filePath = public_path() . '/' . $school_id . '.csv';
 
         $spreadsheet = IOFactory::load($filePath);
         $worksheet = $spreadsheet->getActiveSheet();
@@ -331,7 +362,7 @@ class MergingData extends Controller
             $email = $worksheet->getCell('R' . $row)->getValue();
             $phone = $worksheet->getCell('S' . $row)->getValue();
 
-            $member = OrgMembers::where('email', $email)->where('created_at', '<', '2024-07-01')->first();
+            $member = OrgMembers::where('email', $email)->first();
             if (isset($member)) {
 
                 // 1st kid
@@ -344,14 +375,14 @@ class MergingData extends Controller
                         ->where('last_name', $student_1_lname)
                         ->first();
                     if ($kid1) {
-                        $kid1->update(['organization_grade_id' => $this->getGrade($student_1_grade)]);
+                        $kid1->update(['organization_grade_id' => $this->getGrade($student_1_grade, $school_id)]);
                     } else {
                         OrgMembers::create([
                             'organization_family_id' => $member->organization_family_id,
                             'first_name' => $student_1_fname,
                             'last_name' => $student_1_lname,
                             'role' => 2,
-                            'organization_grade_id' => $this->getGrade($student_1_grade),
+                            'organization_grade_id' => $this->getGrade($student_1_grade, $school_id),
                         ]);
                     }
                 }
@@ -364,14 +395,14 @@ class MergingData extends Controller
                         ->where('last_name', $student_2_lname)
                         ->first();
                     if ($kid2) {
-                        $kid2->update(['organization_grade_id' => $this->getGrade($student_2_grade)]);
+                        $kid2->update(['organization_grade_id' => $this->getGrade($student_2_grade, $school_id)]);
                     } else {
                         OrgMembers::create([
                             'organization_family_id' => $member->organization_family_id,
                             'first_name' => $student_2_fname,
                             'last_name' => $student_2_lname,
                             'role' => 2,
-                            'organization_grade_id' => $this->getGrade($student_2_grade),
+                            'organization_grade_id' => $this->getGrade($student_2_grade, $school_id),
                         ]);
                     }
                 }
@@ -384,14 +415,14 @@ class MergingData extends Controller
                         ->where('last_name', $student_3_lname)
                         ->first();
                     if ($kid3) {
-                        $kid3->update(['organization_grade_id' => $this->getGrade($student_3_grade)]);
+                        $kid3->update(['organization_grade_id' => $this->getGrade($student_3_grade, $school_id)]);
                     } else {
                         OrgMembers::create([
                             'organization_family_id' => $member->organization_family_id,
                             'first_name' => $student_3_fname,
                             'last_name' => $student_3_lname,
                             'role' => 2,
-                            'organization_grade_id' => $this->getGrade($student_3_grade),
+                            'organization_grade_id' => $this->getGrade($student_3_grade, $school_id),
                         ]);
                     }
                 }
@@ -403,9 +434,9 @@ class MergingData extends Controller
         }
     }
 
-    public function getGrade($grade)
+    public function getGrade($grade, $school_id)
     {
-        return OrgGrades::where('organization_id', 33)->where('name', $grade)->value('id');
+        return OrgGrades::where('organization_id', $school_id)->where('name', $grade)->value('id');
     }
 
     public function deleteGraduatedKids()
@@ -423,5 +454,27 @@ class MergingData extends Controller
          * 2. Update all kids grade
          * 3. Upload new kids/families
          */
+    }
+
+    /**
+     * 
+     */
+    public function deleteFamilyByEmail($email)
+    {
+        // Find the family member by email
+        $family = OrgMembers::where('email', $email)->first();
+
+        if ($family) {
+            // Find the family by the organization_family_id and delete it if it exists
+            $orgFamily = OrgFamilies::find($family->organization_family_id);
+            if ($orgFamily) {
+                $orgFamily->delete();
+            }
+
+            // Delete all members associated with the organization_family_id
+            OrgMembers::where('organization_family_id', $family->organization_family_id)->delete();
+        } else {
+            echo "Family member with email {$email} not found.";
+        }
     }
 }

@@ -1,6 +1,6 @@
-1. Delete Graduating Kids
-2. Update Existing Kids
-3. Add new Kids
+1. Update Existing Kids
+2. Add new Kids
+3. Delete Graduating Kids
 
 DASHBOARD FEATURES:
 - See and delete graduated students
