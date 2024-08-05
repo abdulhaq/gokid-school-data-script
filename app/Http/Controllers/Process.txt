@@ -5,3 +5,16 @@
 DASHBOARD FEATURES:
 - See and delete graduated students
 - Download new students sheet
+
+KNOWN ISSUES WITH SCRIPT:
+- If email changes, it will create new family.
+- If student name spellings change, it will consider it as new student.
+- If Address is same, it should be considered as one family
+
+NEW ITEMS TO ADD:
+- Link users with org members
+
+PROBLEM WITH DELETE FUNCTION
+- It matches emails of parents that are not found in excel and suggest to delete that family. However in some cases the family has multiple guardians and other guardian email do exist in the excel. 
+
+- Suggested change: take into account all guardians emails before actually deleting family.

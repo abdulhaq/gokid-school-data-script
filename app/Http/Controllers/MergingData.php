@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Addresses;
 use App\Models\OrgFamilies;
 use App\Models\OrgGrades;
 use App\Models\OrgMembers;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Csv;
+
+use function PHPUnit\Framework\isNull;
 
 class MergingData extends Controller
 {
@@ -234,7 +239,7 @@ class MergingData extends Controller
                     $sheet->setCellValue("R{$row2}", $email);
                     $sheet->setCellValue("S{$row2}", $phone);
 
-                    $sheet->setCellValue("U{$row2}", 'Exist in another school: '.$member->family[0]->organization_id);
+                    $sheet->setCellValue("U{$row2}", 'Exist in another school: ' . $member->family[0]->organization_id);
                     $row2++;
                 } else {
                     continue;
@@ -265,6 +270,19 @@ class MergingData extends Controller
         unlink($temp_file);
 
         exit;
+    }
+
+    /**
+     * Check if address exist for new family. If yes, add new parent to existing family
+     */
+    public function checkIfAddressExist($address)
+    {
+        $address = Addresses::where('name', $address)->get();
+        if (isset($address)) {
+            return true;
+        } else {
+            return true;
+        }
     }
 
     /**
@@ -300,12 +318,12 @@ class MergingData extends Controller
                         }
                     }
                     if (!$found) {
-                        // $this->deleteFamilyByEmail($memb->email);
+                        $this->deleteFamilyByEmail($memb->email);
                         // dd('deleted: '. $memb->email);
                         $count++;
                         $emails .= $memb->email . '</br>';
-                        if ($count == 20) {
-                            // dd('deleted :' . $emails);
+                        if ($count == 40) {
+                            dd('deleted :' . $emails);
                         }
                     }
                 }
@@ -457,7 +475,7 @@ class MergingData extends Controller
     }
 
     /**
-     * 
+     * This deletes a family provided email address of one member
      */
     public function deleteFamilyByEmail($email)
     {
@@ -465,16 +483,119 @@ class MergingData extends Controller
         $family = OrgMembers::where('email', $email)->first();
 
         if ($family) {
-            // Find the family by the organization_family_id and delete it if it exists
-            $orgFamily = OrgFamilies::find($family->organization_family_id);
-            if ($orgFamily) {
-                $orgFamily->delete();
-            }
+            // check if family has more than 1 parent. If yes don't delete it
+            $parents = OrgMembers::where('organization_family_id', $family->organization_family_id)->where('role', 1)->count();
+            if ($parents == 2) {
+                // Find the family by the organization_family_id and delete it if it exists
+                $orgFamily = OrgFamilies::find($family->organization_family_id);
+                if ($orgFamily) {
+                    $orgFamily->delete();
+                }
 
-            // Delete all members associated with the organization_family_id
-            OrgMembers::where('organization_family_id', $family->organization_family_id)->delete();
+                // Delete all members associated with the organization_family_id
+                OrgMembers::where('organization_family_id', $family->organization_family_id)->delete();
+            } else {
+                echo "Family with id {$family->organization_family_id} has more than 1 parent {$email}.</br>";
+            }
         } else {
-            echo "Family member with email {$email} not found.";
+            echo "Family member with email {$email} not found.</br>";
+        }
+    }
+
+    /**
+     * This function displays a list of all families in a school that have same address. Gives option to merge them as one.
+     */
+    public function familiesWithSameAddress($school_id)
+    {
+        // $families = OrgFamilies::where('organization_id', $school_id)->get();
+        // foreach($families as $family) {
+
+        // }
+        // Find shared addresses for org_id = 33
+        // $sharedAddresses = DB::table('org_families')
+        //     ->join('addresses', 'org_families.address_id', '=', 'addresses.id')
+        //     ->select('addresses.name as address_name', DB::raw('count(*) as family_count'))
+        //     ->where('org_families.org_id', 33)
+        //     ->groupBy('addresses.name')
+        //     ->having('family_count', '>', 1)
+        //     ->get();
+
+        // Find families with shared addresses for org_id = 33
+        $sharedFamilies = OrgFamilies::with('address')
+            ->where('organization_id', $school_id)
+            ->whereHas('address', function ($query) use ($school_id) {
+                $query->whereIn('name', function ($subQuery) use ($school_id) {
+                    $subQuery->select('addresses.name')
+                        ->from('organization_families')
+                        ->join('addresses', 'organization_families.address_id', '=', 'addresses.id')
+                        ->where('organization_families.organization_id', $school_id)
+                        ->groupBy('addresses.name')
+                        ->havingRaw('COUNT(*) > 1');
+                });
+            })
+            ->join('addresses', 'organization_families.address_id', '=', 'addresses.id')
+            ->orderBy('addresses.name')
+            ->get();
+
+        echo '<style>
+                table {
+                font-family: arial, sans-serif;
+                border-collapse: collapse;
+                width: 100%;
+                }
+
+                td, th {
+                border: 1px solid #dddddd;
+                text-align: left;
+                padding: 8px;
+                }
+
+                tr.dark {
+                background-color: #dddddd;
+                }
+            </style>
+            <table>
+                <tr>
+                    <th>Family ID</th>
+                    <th>Address</th>
+                </tr>';
+        $i = 0;
+        foreach ($sharedFamilies as $family) {
+            $i++;
+            echo '<tr>
+                    <td>' . $family->id . '</td>
+                    <td>' . $family->address->name . '</td>
+                </tr>';
+
+            if ($i == 2) {
+                echo '<tr class="dark">
+                    <td></td>
+                    <td></td>
+                </tr>';
+                $i = 0;
+            }
+        }
+        echo '</table>';
+    }
+
+    /**
+     * If a user exist with the same email as a org member, link them togather so when they login they see schools they are associated to.
+     */
+    public function linkMembersWithUsers($school_id)
+    {
+        $families = OrgFamilies::where('organization_id', $school_id)->with('members')->get();
+
+        foreach ($families as $members) {
+            foreach ($members->members as $member) {
+                if (isset($member->email) && !isset($member->user_id)) {
+                    $user = User::where('email', $member->email)->first();
+                    if (isset($user)) {
+                        // dd($user);
+                        // OrgMembers::where('email', $member->email)->update(['user_id' => $user->id]);
+                        echo $user->email . '</br>';
+                    }
+                }
+            }
         }
     }
 }
